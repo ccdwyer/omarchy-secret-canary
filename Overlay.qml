@@ -73,6 +73,7 @@ Item {
       if (method === "redactGit" && typeof svc.redactGit === "function") return svc.redactGit(arg)
       if (method === "allowRule" && typeof svc.allowRule === "function") return svc.allowRule(arg)
       if (method === "enableRule" && typeof svc.enableRule === "function") return svc.enableRule(arg)
+      if (method === "status" && typeof svc.status === "function") return svc.status()
     }
     if (adapter.callIpc(root.shell, method, arg))
       return "ok"
@@ -158,6 +159,14 @@ Item {
     else
       root.open("{}")
   }
+
+  function redact(arg) { return String(root.callService("redact", arg || "")) }
+  function restore(arg) { return String(root.callService("restore", arg || "")) }
+  function status(arg) { return String(root.callService("status", arg || "")) }
+  function mute(arg) { return String(root.callService("mute", arg || "")) }
+  function test(arg) { return String(root.callService("testCanary", arg || "")) }
+  function allowRule(arg) { return String(root.callService("allowRule", arg || "")) }
+  function enableRule(arg) { return String(root.callService("enableRule", arg || "")) }
 
   function doRedact() {
     if (root.mode !== "alarm")

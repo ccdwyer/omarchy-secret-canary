@@ -100,7 +100,7 @@ The plugin does **not** write `hyprland.conf`. Bind backups yourself if you
 want them when the overlay is not focused:
 
 ```
-bind = SUPER CTRL, X, exec, omarchy-shell shell call io.github.chris.secret-canary redact
+bind = SUPER CTRL, X, exec, omarchy-shell io.github.chris.secret-canary redact ''
 bind = SUPER CTRL, C, exec, omarchy-shell shell summon io.github.chris.secret-canary '{}'
 ```
 
@@ -181,19 +181,22 @@ Mute 1 hour is a runtime action on the settings overlay.
 
 ## IPC
 
+`shell summon` / `hide` show the overlay. Service verbs (`redact`, `status`, …)
+live on the keep-loaded service `IpcHandler`. `omarchy-shell shell call <id>`
+hits the overlay loader only (open/close/toggle), so it cannot redact. Always
+pass the string argument, even when unused:
+
 ```sh
-omarchy-shell shell call io.github.chris.secret-canary redact
-omarchy-shell shell call io.github.chris.secret-canary allowRule jwt
-omarchy-shell shell call io.github.chris.secret-canary enableRule jwt
-omarchy-shell shell call io.github.chris.secret-canary restore
-omarchy-shell shell call io.github.chris.secret-canary test
-omarchy-shell shell call io.github.chris.secret-canary mute
-omarchy-shell shell call io.github.chris.secret-canary status
+omarchy-shell io.github.chris.secret-canary redact ''
+omarchy-shell io.github.chris.secret-canary allowRule jwt
+omarchy-shell io.github.chris.secret-canary enableRule jwt
+omarchy-shell io.github.chris.secret-canary restore ''
+omarchy-shell io.github.chris.secret-canary test ''
+omarchy-shell io.github.chris.secret-canary mute ''
+omarchy-shell io.github.chris.secret-canary status ''
 omarchy-shell shell summon io.github.chris.secret-canary '{}'
 omarchy-shell shell hide io.github.chris.secret-canary
 ```
-
-The service also registers an `IpcHandler` target of the same id.
 
 ## Tests (off-device)
 

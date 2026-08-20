@@ -80,10 +80,8 @@ Item {
   function callIpc(shell, method, arg) {
     var verb = adapter.ipcVerb(method)
     try {
-      var cmd = ["omarchy-shell", "shell", "call", pluginId, verb]
-      if (arg !== undefined && arg !== null && String(arg).length)
-        cmd.push(String(arg))
-      Quickshell.execDetached(cmd)
+      var a = arg === undefined || arg === null ? "" : String(arg)
+      Quickshell.execDetached(["omarchy-shell", pluginId, verb, a])
       return true
     } catch (e) {
       return false
