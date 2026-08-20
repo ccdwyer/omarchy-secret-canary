@@ -47,6 +47,7 @@ const GitRedact = loadEngine("GitRedact.js")
 const Allow = loadEngine("Allow.js")
 const Protocol = loadEngine("Protocol.js")
 const State = loadEngine("State.js")
+const Binds = loadEngine("Binds.js")
 
 let passed = 0
 let failed = 0
@@ -336,6 +337,72 @@ test("rule catalog covers tier-1 ids and jwt/entropy", () => {
   assert.ok(ids.indexOf("jwt") >= 0)
   assert.ok(ids.indexOf("entropy") >= 0)
   assert.ok(Protocol.ruleCatalog().length >= 12)
+})
+
+test("binds: empty live list offers redact and summon preferreds", () => {
+  const p = Binds.plan([])
+  assert.strictEqual(p.needed, true)
+  assert.strictEqual(p.toAdd.length, 2)
+  assert.strictEqual(p.toAdd[0].chosen, "SUPER + ALT + X")
+  assert.strictEqual(p.toAdd[1].chosen, "SUPER + ALT + SHIFT + C")
+  const lua = Binds.luaBlock(p.toAdd)
+  assert.ok(lua.indexOf("o.bind(\"SUPER + ALT + X\"") === 0)
+  assert.ok(lua.indexOf("redact") >= 0)
+  assert.ok(p.toAdd.every((x) => x.chosen !== "SUPER + CTRL + X"))
+  assert.ok(p.toAdd.every((x) => x.chosen !== "SUPER + CTRL + C"))
+})
+
+test("binds: stock dictation and capture do not steal preferreds", () => {
+  const live = [
+    { modmask: 68, key: "X", dispatcher: "__lua", arg: "268", description: "Toggle dictation" },
+    { modmask: 68, key: "C", dispatcher: "__lua", arg: "35", description: "Capture menu" }
+  ]
+  const p = Binds.plan(live)
+  assert.strictEqual(p.needed, true)
+  assert.strictEqual(p.toAdd[0].chosen, "SUPER + ALT + X")
+  assert.strictEqual(p.toAdd[1].chosen, "SUPER + ALT + SHIFT + C")
+})
+
+test("binds: chroma SUPER+ALT+C does not steal summon preferred", () => {
+  const live = [
+    { modmask: 72, key: "C", dispatcher: "__lua", arg: "omarchy-shell shell summon io.github.chris.chroma '{}'", description: "Chroma" }
+  ]
+  const p = Binds.plan(live)
+  assert.strictEqual(p.needed, true)
+  const summon = p.toAdd.filter((x) => x.desc === "Secret Canary")[0]
+  assert.ok(summon)
+  assert.strictEqual(summon.chosen, "SUPER + ALT + SHIFT + C")
+})
+
+test("binds: summon preferred taken falls back to SUPER+ALT+C if free", () => {
+  const live = [
+    { modmask: 73, key: "C", dispatcher: "exec", arg: "other", description: "taken" }
+  ]
+  const p = Binds.plan(live)
+  const summon = p.toAdd.filter((x) => x.desc === "Secret Canary")[0]
+  assert.strictEqual(summon.chosen, "SUPER + ALT + C")
+})
+
+test("binds: chroma live SUPER+ALT+C skips summon if preferred is also taken", () => {
+  const live = [
+    { modmask: 73, key: "C", dispatcher: "exec", arg: "other", description: "taken" },
+    { modmask: 72, key: "C", dispatcher: "__lua", arg: "15", description: "Chroma" }
+  ]
+  const p = Binds.plan(live)
+  const summon = p.toAdd.filter((x) => x.desc === "Secret Canary")[0]
+  assert.ok(!summon)
+  const skipped = p.skipped.filter((x) => x.desc === "Secret Canary")[0]
+  assert.ok(skipped)
+})
+
+test("binds: already-ours via lua description hides the offer", () => {
+  const live = [
+    { modmask: 72, key: "X", dispatcher: "__lua", arg: "15", description: "Secret Canary redact" }
+  ]
+  const p = Binds.plan(live)
+  assert.strictEqual(p.needed, false)
+  assert.ok(p.already >= 1)
+  assert.strictEqual(p.toAdd.length, 0)
 })
 
 console.log(passed + " passed, " + failed + " failed")

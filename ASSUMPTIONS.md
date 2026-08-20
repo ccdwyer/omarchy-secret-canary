@@ -166,7 +166,11 @@ documented types (`Process`, `SplitParser`, `FileView`, `IpcHandler`,
 - OCR "scan focused window" stretch.
 - A second Quickshell process.
 - Network, accounts, telemetry.
-- Writing Hyprland config.
+- Writing Hyprland config except an opt-in `Add keybindings` control that
+  appends a marked `o.bind` block to `~/.config/hypr/bindings.lua` after
+  checking `hyprctl -j binds`. Occupied combos are skipped or replaced with
+  Super+Shift+Alt / Super+Alt variants. Super+Ctrl+X (dictation) and
+  Super+Ctrl+C (capture) are never stolen. Never `hl.unbind`.
 
 ## Example secrets are synthetic
 

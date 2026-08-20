@@ -96,12 +96,22 @@ The alarm is a real overlay with exclusive keyboard focus.
 | A | Allowlist this value (SHA-256 stored, never plaintext) |
 | Esc | Dismiss (30 s auto-dismiss) |
 
-The plugin does **not** write `hyprland.conf`. Bind backups yourself if you
-want them when the overlay is not focused:
+Super+Ctrl+X is Omarchy dictation and Super+Ctrl+C is the capture menu, so
+Canary prefers Super+Alt+X (redact) and Super+Alt+Shift+C (summon). If none
+of those keys are bound yet, the settings overlay and a **keys** chip on the
+bar offer **Add keybindings**. That writes `o.bind` lines to
+`~/.config/hypr/bindings.lua` (Hyprland reloads on save). Combos you already
+use are skipped; Super+Alt+X falls back to Super+Shift+Alt+X, and summon
+falls back to Super+Alt+C only if that combo is free (Chroma may already
+own it). The plugin never unbinds someone else's shortcut.
 
 ```
-bind = SUPER CTRL, X, exec, omarchy-shell io.github.chris.secret-canary redact ''
-bind = SUPER CTRL, C, exec, omarchy-shell shell summon io.github.chris.secret-canary '{}'
+bind = SUPER ALT, X, exec, omarchy-shell io.github.chris.secret-canary redact ''
+bind = SUPER ALT SHIFT, C, exec, omarchy-shell shell summon io.github.chris.secret-canary '{}'
+```
+
+```sh
+omarchy-shell io.github.chris.secret-canary installBinds ''
 ```
 
 Left-click the chip for settings (Test the canary, mute, watched repos).
