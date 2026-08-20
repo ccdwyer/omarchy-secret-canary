@@ -308,7 +308,7 @@ Item {
       onRead: function(line) { console.warn("canaryd:", line) }
     }
     onStarted: healthyTimer.restart()
-    onExited: {
+    onExited: function(exitCode) {
       root.lastStatus = "exited:" + exitCode
       root.onHelperGone()
     }
@@ -334,26 +334,26 @@ Item {
   IpcHandler {
     target: "io.github.chris.secret-canary"
 
-    function ping(): string { return root.ping() }
-    function status(): string { return root.status() }
-    function redact(): string { return root.redact() }
+    function ping(arg: string): string { return root.ping() }
+    function status(arg: string): string { return root.status() }
+    function redact(arg: string): string { return root.redact() }
     function redactClip(hash: string): string { return root.redactClip(hash) }
     function redactGit(hash: string): string { return root.redactGit(hash) }
-    function restore(): string { return root.restore() }
+    function restore(arg: string): string { return root.restore() }
     function allowlist(hash: string): string { return root.allowlist(hash) }
     function allowRule(id: string): string { return root.allowRule(id) }
     function enableRule(id: string): string { return root.enableRule(id) }
-    function dismiss(): string { return root.dismiss() }
-    function mute(): string { return root.mute() }
-    function unmute(): string { return root.unmute() }
-    function test(): string { return root.testCanary() }
+    function dismiss(arg: string): string { return root.dismiss() }
+    function mute(arg: string): string { return root.mute() }
+    function unmute(arg: string): string { return root.unmute() }
+    function test(arg: string): string { return root.testCanary() }
     function watch(path: string): string { return root.watchRepo(path) }
     function unwatch(path: string): string { return root.unwatchRepo(path) }
-    function summon(): string { return root.open() }
-    function open(): string { return root.open() }
-    function close(): string { return root.close() }
-    function toggle(): string { return root.toggle() }
-    function settings(): string { return root.settings() }
+    function summon(arg: string): string { return root.open() }
+    function open(arg: string): string { return root.open() }
+    function close(arg: string): string { return root.close() }
+    function toggle(arg: string): string { return root.toggle() }
+    function settings(arg: string): string { return root.settings() }
     function setSound(v: string): string { return root.setSound(v === "true") }
   }
 

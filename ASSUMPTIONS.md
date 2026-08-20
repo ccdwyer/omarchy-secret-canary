@@ -27,11 +27,16 @@ documented types (`Process`, `SplitParser`, `FileView`, `IpcHandler`,
   Adapter tries `pluginRegistry.serviceFor`, `shell.serviceFor`, then
   `shell.firstPartyServiceFor`. Overlay/service commands that cannot
   reach the in-process object use the documented CLI:
-  `omarchy-shell shell call|summon|hide`. Direct `shell.summon` /
-  `shell.hide` / `shell.call` methods are not assumed.
-- **IPC verb** is `omarchy-shell shell call <id> <method> <arg>` and
-  `summon` / `hide` / `toggle`. Confirmed in `quattro-shell-reference.md`.
-  `IpcHandler` target is the plugin id (extra path, not a second process).
+  `omarchy-shell io.github.chris.secret-canary <method> <arg>` for service
+  verbs, plus `shell summon|hide` for the overlay. Direct `shell.summon` /
+  `shell.hide` / `shell.call` methods are not assumed. `shell call <id>`
+  hits the overlay loader only.
+- **IPC verb** for service methods is
+  `omarchy-shell io.github.chris.secret-canary <method> <arg>` (always a
+  string arg, `''` when unused). Overlay summon/hide/toggle stay
+  `omarchy-shell shell summon|hide|toggle`. Every IpcHandler method takes
+  `arg: string` so arity matches. Overlay root `redact`/`status`/… forward
+  to the service when the overlay is loaded.
 - **Injected properties** on load: `omarchyPath`, `shell`, `manifest`,
   `pluginRegistry` (and `bar` on bar widgets). Overlay/BarWidget still
   function if some of these are missing.
@@ -41,7 +46,8 @@ documented types (`Process`, `SplitParser`, `FileView`, `IpcHandler`,
 - **`Process.stdinEnabled` + `process.write(line)`** is how Service talks to
   canaryd. Documented on Quickshell.Io.Process in recent docs; if `write` is
   missing the adapter returns false and the overlay keys fall back to
-  `omarchy-shell shell call`. Isolated in `Adapter.writeDaemon`.
+  `omarchy-shell io.github.chris.secret-canary <method> <arg>`. Isolated in
+  `Adapter.writeDaemon`.
 - **`SplitParser.onRead`** for daemon stdout. Same pattern as Socket parsers
   in sibling plugins. Stderr is also SplitParser and must never carry
   secrets (canaryd does not print them).
@@ -59,7 +65,7 @@ documented types (`Process`, `SplitParser`, `FileView`, `IpcHandler`,
   `PopupWindow` anchoring is less clearly documented than `PanelWindow`,
   which we already use for the alarm. Left-click the chip summons settings;
   a red chip summons the alarm. Right-click tests. Same IPC:
-  `omarchy-shell shell call … settings`.
+  `omarchy-shell io.github.chris.secret-canary settings ''`.
 - **Theme tokens** `Color.menu.*`, `Color.accent`, `Style.*`, `Border.*`,
   `WidgetButton`, `BarWidget`, `BorderSurface`, `PanelWindow` — copied from
   first-party clipboard / Desktop Undo. Danger color tries `Color.danger` /
