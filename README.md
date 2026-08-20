@@ -10,7 +10,7 @@ Quickshell instance. Detection is offline: no accounts, no network.
 ## Install
 
 ```sh
-omarchy plugin add <git-url> --enable
+omarchy plugin add https://github.com/ccdwyer/omarchy-secret-canary.git --enable
 ```
 
 Then install `canaryd` (recommended). QML falls back to `compat/canaryd.sh`
