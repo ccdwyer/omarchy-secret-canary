@@ -1,0 +1,124 @@
+# Linux canaryd artifacts. This Mac cannot cross-compile; CI is the only
+# delivery path for x86_64 / aarch64 binaries. They are never committed.
+#
+# Security: pull_request events build/run untrusted PR code, so they run with a
+# read-only token and only upload artifacts. Publishing a GitHub Release (which
+# needs `contents: write`) happens in a separate job gated to tag pushes and
+# manual dispatch, and that job only publishes already-built artifacts — it
+# never builds or executes PR-supplied code.
+
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths:
+      - "src/canaryd/**"
+      - "compat/canaryd.sh"
+      - ".github/workflows/release.yml"
+      - "build.sh"
+  workflow_dispatch:
+
+# Read-only by default. Any job that needs more elevates explicitly.
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    # Builds and runs canaryd from the checked-out (possibly untrusted, on PRs)
+    # source. Must never hold a write token.
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+            cross: false
+          - target: aarch64-unknown-linux-musl
+            cross: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install musl-tools (x86_64)
+        if: ${{ !matrix.cross }}
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - name: Install cross (aarch64)
+        if: ${{ matrix.cross }}
+        run: cargo install cross --locked
+
+      - name: Unit tests
+        if: ${{ !matrix.cross }}
+        run: cargo test --locked --manifest-path src/canaryd/Cargo.toml
+
+      - name: Build
+        run: |
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            (cd src/canaryd && cross build --release --locked --target ${{ matrix.target }})
+          else
+            cargo build --release --locked --manifest-path src/canaryd/Cargo.toml --target ${{ matrix.target }}
+          fi
+
+      - name: Smoke test artifact
+        run: |
+          t="${{ matrix.target }}"
+          bin="src/canaryd/target/${t}/release/canaryd"
+          test -x "$bin"
+          file "$bin" || true
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            python3 -c 'import pathlib,struct,sys; d=pathlib.Path(sys.argv[1]).read_bytes(); assert d[:4]==b"\x7fELF"; m=struct.unpack_from("<H",d,18)[0]; assert m==183, m' "$bin"
+          else
+            "$bin" --self-test
+            printf 'AKIAIOSFODNN7EXAMPLE' | "$bin" scan | grep -q aws-access-key
+            out=$(printf 'hello world' | "$bin" scan || true)
+            test -z "$out"
+          fi
+
+      - name: Stage dist
+        run: |
+          mkdir -p dist
+          t="${{ matrix.target }}"
+          cp "src/canaryd/target/${t}/release/canaryd" "dist/canaryd-${t}"
+          chmod +x "dist/canaryd-${t}"
+          (cd dist && sha256sum "canaryd-${t}" > "SHA256SUMS-${t}")
+          cat "dist/SHA256SUMS-${t}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: canaryd-linux-${{ matrix.target }}
+          path: dist/
+
+  # Publishing needs `contents: write`. It runs ONLY on tag pushes / manual
+  # dispatch (never on pull_request), and does not build or execute any
+  # checked-out code — it only attaches artifacts produced by the `linux` job.
+  release:
+    needs: linux
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download built artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: canaryd-linux-*
+          path: dist
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -R dist
+
+      - name: Attach to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/canaryd-*
+            dist/SHA256SUMS-*

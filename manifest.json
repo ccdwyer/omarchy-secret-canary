@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.chris.secret-canary",
+  "name": "Secret Canary",
+  "version": "1.0.0",
+  "author": "chris",
+  "license": "MIT",
+  "description": "Screams when AWS keys, GitHub tokens, or private keys escape into your clipboard or staged git diffs. One key to redact.",
+  "kinds": ["service", "bar-widget", "overlay"],
+  "keepLoaded": true,
+  "entryPoints": {
+    "service": "Service.qml",
+    "barWidget": "BarWidget.qml",
+    "overlay": "Overlay.qml"
+  },
+  "barWidget": {
+    "displayName": "Secret Canary",
+    "category": "Security",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "sound": false,
+      "hideUntilEvent": false
+    },
+    "schema": [
+      { "key": "sound", "type": "boolean", "label": "Chime on alarm" },
+      { "key": "hideUntilEvent", "type": "boolean", "label": "Hide icon until first event" }
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+[
+  {"id": "aws-example", "text": "AKIAIOSFODNN7EXAMPLE", "rule": "aws-access-key", "tier": 1},
+  {"id": "aws-2", "text": "AKIA0000000000000001", "rule": "aws-access-key", "tier": 1},
+  {"id": "aws-3", "text": "export AWS_ACCESS_KEY_ID=AKIAZZZZZZZZZZZZZZZZ", "rule": "aws-access-key", "tier": 1},
+  {"id": "aws-secret", "text": "aws_secret_access_key=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", "rule": "aws-secret-access-key", "tier": 1},
+  {"id": "ghp-1", "text": "ghp_EXAMPLENOTAREALTOKENabcdefghij00", "rule": "github-pat", "tier": 1},
+  {"id": "gho-1", "text": "gho_EXAMPLENOTAREALTOKENabcdefghij00", "rule": "github-oauth", "tier": 1},
+  {"id": "ghs-1", "text": "ghs_EXAMPLENOTAREALTOKENabcdefghij00", "rule": "github-app", "tier": 1},
+  {"id": "gf-1", "text": "github_pat_EXAMPLENOTAREALtokenabcdef0123", "rule": "github-fine-grained", "tier": 1},
+  {"id": "pem-rsa", "text": "-----BEGIN RSA PRIVATE KEY-----", "rule": "private-key", "tier": 1},
+  {"id": "pem-ec", "text": "-----BEGIN EC PRIVATE KEY-----", "rule": "private-key", "tier": 1},
+  {"id": "pem-openssh", "text": "-----BEGIN OPENSSH PRIVATE KEY-----", "rule": "private-key", "tier": 1},
+  {"id": "pem-pgp", "text": "-----BEGIN PGP PRIVATE KEY-----", "rule": "private-key", "tier": 1},
+  {"id": "pem-pkcs8", "text": "-----BEGIN PRIVATE KEY-----", "rule": "private-key-pkcs8", "tier": 1},
+  {"id": "sk-1", "text": "sk-EXAMPLENOTAREALKEYabcdef1234", "rule": "openai-key", "tier": 1},
+  {"id": "sk-proj", "text": "sk-proj-EXAMPLENOTAREALKEYabcdef1234", "rule": "openai-proj-key", "tier": 1},
+  {"id": "slack-b", "text": "xoxb-EXAMPLENOTAREALTOKEN000000", "rule": "slack-token", "tier": 1},
+  {"id": "slack-p", "text": "xoxp-EXAMPLENOTAREALTOKEN000000", "rule": "slack-token", "tier": 1},
+  {"id": "jwt-1", "text": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4ifQ.signaturexxextra", "rule": "jwt", "tier": 2},
+  {"id": "entropy-1", "text": "api_key=aB3dE5fG7hI9jK1lM3nO5pQ7rS9tU1vW", "rule": "entropy", "tier": 2}
+]

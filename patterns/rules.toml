@@ -1,0 +1,88 @@
+# Bundled gitleaks-derived ruleset for Secret Canary.
+# Tier 1 = structured prefixes / PEM headers (auto-alarm).
+# Tier 2 = JWTs (clipboard amber only; git is log-only).
+# Generic high-entropy detection is not a regex rule; see Detect.js / detect.rs.
+
+[[rules]]
+id = "aws-access-key"
+description = "AWS Access Key ID"
+tier = 1
+title = "AWS key"
+regex = '''AKIA[0-9A-Z]{16}'''
+
+[[rules]]
+id = "aws-secret-access-key"
+description = "AWS Secret Access Key next to a labelled assignment"
+tier = 1
+title = "AWS secret key"
+regex = '''(?i)(?:aws)?_?secret_?(?:access)?_?key["'\s:=]{0,16}([A-Za-z0-9/+=]{40})'''
+
+[[rules]]
+id = "github-pat"
+description = "GitHub personal access token (classic)"
+tier = 1
+title = "GitHub token"
+regex = '''ghp_[A-Za-z0-9]{20,}'''
+
+[[rules]]
+id = "github-oauth"
+description = "GitHub OAuth access token"
+tier = 1
+title = "GitHub token"
+regex = '''gho_[A-Za-z0-9]{20,}'''
+
+[[rules]]
+id = "github-app"
+description = "GitHub App / installation token"
+tier = 1
+title = "GitHub token"
+regex = '''ghs_[A-Za-z0-9]{20,}'''
+
+[[rules]]
+id = "github-fine-grained"
+description = "GitHub fine-grained personal access token"
+tier = 1
+title = "GitHub token"
+regex = '''github_pat_[A-Za-z0-9_]{20,}'''
+
+[[rules]]
+id = "private-key"
+description = "PEM / OpenSSH private key header"
+tier = 1
+title = "Private key"
+regex = '''-----BEGIN (?:RSA|EC|OPENSSH|PGP) PRIVATE KEY-----'''
+
+[[rules]]
+id = "private-key-pkcs8"
+description = "PKCS#8 private key header"
+tier = 1
+title = "Private key"
+regex = '''-----BEGIN PRIVATE KEY-----'''
+
+[[rules]]
+id = "openai-key"
+description = "OpenAI / similar sk- secret"
+tier = 1
+title = "API key"
+regex = '''sk-[A-Za-z0-9]{20,}'''
+
+[[rules]]
+id = "openai-proj-key"
+description = "OpenAI project / service-account key"
+tier = 1
+title = "API key"
+regex = '''sk-(?:proj|svcacct)-[A-Za-z0-9_-]{20,}'''
+
+[[rules]]
+id = "slack-token"
+description = "Slack bot / user / app token"
+tier = 1
+title = "Slack token"
+regex = '''xox[baprs]-[A-Za-z0-9-]{10,}'''
+
+[[rules]]
+id = "jwt"
+description = "JSON Web Token"
+tier = 2
+title = "JWT"
+regex = '''eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}'''
