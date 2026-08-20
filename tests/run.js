@@ -403,6 +403,34 @@ test("binds: already-ours via lua description hides the offer", () => {
   assert.strictEqual(p.needed, false)
   assert.ok(p.already >= 1)
   assert.strictEqual(p.toAdd.length, 0)
+  assert.ok(p.current.indexOf("SUPER + ALT + X") >= 0)
+  assert.strictEqual(p.keys, "SUPER + ALT + X")
+})
+
+test("binds: replace rewrites already-ours without unbind", () => {
+  const live = [
+    { modmask: 72, key: "X", dispatcher: "__lua", arg: "15", description: "Secret Canary redact" }
+  ]
+  const p = Binds.plan(live, { replace: true })
+  assert.strictEqual(p.needed, false)
+  assert.ok(p.toAdd.some((x) => (x.chosen || x.keys) === "SUPER + ALT + X"))
+  const lua = Binds.luaBlock(p.toAdd)
+  assert.ok(lua.indexOf("o.bind(") >= 0)
+  assert.ok(lua.indexOf("unbind") < 0)
+  assert.ok(lua.indexOf("hl.unbind") < 0)
+})
+
+test("binds: ours on alternate is already, not skipped", () => {
+  const live = [
+    { modmask: 72, key: "X", dispatcher: "__lua", arg: "other", description: "taken" },
+    { modmask: 73, key: "X", dispatcher: "__lua", arg: "omarchy-shell io.github.chris.secret-canary redact ''", description: "Secret Canary redact" }
+  ]
+  const p = Binds.plan(live)
+  assert.strictEqual(p.needed, false)
+  assert.ok(p.keys.indexOf("SUPER + SHIFT + ALT + X") >= 0)
+  assert.ok(!p.skipped.some((x) => x.desc === "Secret Canary redact"))
+  const rewritten = Binds.plan(live, { replace: true })
+  assert.ok(rewritten.toAdd.some((x) => (x.chosen || x.keys) === "SUPER + SHIFT + ALT + X"))
 })
 
 test("binds: notify body lists assigned keys", () => {
@@ -416,19 +444,86 @@ test("binds: notify body lists assigned keys", () => {
   assert.strictEqual(argv[7], "Secret Canary keybindings")
 })
 
-test("binds: claimAuto is one-shot", () => {
-  assert.strictEqual(Binds.claimAuto(), true)
-  assert.strictEqual(Binds.claimAuto(), false)
+test("binds: no claimAuto; writes only via explicit argv", () => {
+  assert.strictEqual(typeof Binds.claimAuto, "undefined")
+  const install = Binds.installArgv("/tmp/plugin", "io.github.chris.secret-canary", 'o.bind("SUPER + ALT + X", "Secret Canary redact", "x")')
+  assert.strictEqual(install[0], "python3")
+  assert.ok(install[1].indexOf("compat/install-binds.py") >= 0)
+  assert.strictEqual(install[2], "io.github.chris.secret-canary")
+  const remove = Binds.removeArgv("/tmp/plugin", "io.github.chris.secret-canary")
+  assert.strictEqual(remove[2], "--remove")
+  assert.ok(remove.indexOf("unbind") < 0)
 })
 
-test("qml: no Add keybindings button or keys chip", () => {
-  for (const rel of ["Overlay.qml", "BarWidget.qml", "Service.qml"]) {
-    const src = fs.readFileSync(path.join(ROOT, rel), "utf8")
-    assert.ok(src.indexOf("Add keybindings") < 0, rel)
-    assert.ok(src.indexOf('text: "keys"') < 0, rel)
-  }
+test("qml: Set hotkey is opt-in; scan never auto-installs", () => {
+  const bar = fs.readFileSync(path.join(ROOT, "BarWidget.qml"), "utf8")
+  const overlay = fs.readFileSync(path.join(ROOT, "Overlay.qml"), "utf8")
   const service = fs.readFileSync(path.join(ROOT, "Service.qml"), "utf8")
-  assert.ok(service.indexOf("Binds.claimAuto()") >= 0)
+  assert.ok(bar.indexOf("Set hotkey") >= 0)
+  assert.ok(overlay.indexOf("Set hotkey") >= 0)
+  assert.ok(overlay.indexOf("Change hotkey") >= 0)
+  assert.ok(overlay.indexOf("Remove hotkey") >= 0)
+  assert.ok(service.indexOf("claimAuto") < 0)
+  assert.ok(service.indexOf('installBinds("auto")') < 0)
+  assert.ok(service.indexOf("hl.unbind") < 0)
+  assert.ok(bar.indexOf("hl.unbind") < 0)
+  const scan = service.slice(service.indexOf("function scanBinds"), service.indexOf("function notifyNewBinds"))
+  assert.ok(scan.indexOf("applyBindPlan") >= 0)
+  assert.ok(scan.indexOf("installBinds") < 0)
+})
+
+test("install-binds.py writes and removes only this plugin block", () => {
+  const { spawnSync } = require("child_process")
+  const os = require("os")
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), "canary-binds-"))
+  const hypr = path.join(home, "hypr")
+  fs.mkdirSync(hypr)
+  const file = path.join(hypr, "bindings.lua")
+  fs.writeFileSync(
+    file,
+    'o.bind("SUPER + Q", "Quit", "true")\n\n-- BEGIN other.plugin\no.bind("SUPER + Z", "Other", "true")\n-- END other.plugin\n'
+  )
+  const env = Object.assign({}, process.env, { XDG_CONFIG_HOME: home })
+  const script = path.join(ROOT, "compat/install-binds.py")
+  const lua = 'o.bind("SUPER + ALT + X", "Secret Canary redact", "omarchy-shell io.github.chris.secret-canary redact \'\'")'
+  let r = spawnSync("python3", [script, "io.github.chris.secret-canary", lua], { encoding: "utf8", env })
+  assert.strictEqual(r.status, 0, r.stderr)
+  let text = fs.readFileSync(file, "utf8")
+  assert.ok(text.indexOf("-- BEGIN io.github.chris.secret-canary") >= 0)
+  assert.ok(text.indexOf("SUPER + ALT + X") >= 0)
+  assert.ok(text.indexOf("-- BEGIN other.plugin") >= 0)
+  assert.ok(text.indexOf('o.bind("SUPER + Q"') >= 0)
+  r = spawnSync("python3", [script, "--remove", "io.github.chris.secret-canary"], { encoding: "utf8", env })
+  assert.strictEqual(r.status, 0, r.stderr)
+  text = fs.readFileSync(file, "utf8")
+  assert.ok(text.indexOf("io.github.chris.secret-canary") < 0)
+  assert.ok(text.indexOf("-- BEGIN other.plugin") >= 0)
+  assert.ok(text.indexOf('o.bind("SUPER + Q"') >= 0)
+  fs.rmSync(home, { recursive: true, force: true })
+})
+
+test("state: setBinds publishes bar status", () => {
+  State.setBinds({
+    needed: true,
+    note: "Set SUPER + ALT + X",
+    current: "",
+    keys: "",
+    toAdd: [{ keys: "SUPER + ALT + X" }]
+  })
+  let snap = State.snapshot()
+  assert.strictEqual(snap.bindNeeded, true)
+  assert.strictEqual(snap.bindCanSet, true)
+  State.setBinds({
+    needed: false,
+    note: "SUPER + ALT + X — Secret Canary redact",
+    current: "SUPER + ALT + X — Secret Canary redact",
+    keys: "SUPER + ALT + X",
+    toAdd: []
+  })
+  snap = State.snapshot()
+  assert.strictEqual(snap.bindNeeded, false)
+  assert.strictEqual(snap.bindKeys, "SUPER + ALT + X")
+  assert.strictEqual(snap.bindCanSet, false)
 })
 
 console.log(passed + " passed, " + failed + " failed")

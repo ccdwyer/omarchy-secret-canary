@@ -37,6 +37,11 @@ Item {
   property int allowCount: 0
   property string statusLine: ""
   property string repoDraft: ""
+  property bool bindNeeded: true
+  property bool bindCanSet: false
+  property string bindNote: ""
+  property string bindCurrent: ""
+  property string bindKeys: ""
 
   Adapter { id: adapter }
 
@@ -75,6 +80,7 @@ Item {
       if (method === "enableRule" && typeof svc.enableRule === "function") return svc.enableRule(arg)
       if (method === "status" && typeof svc.status === "function") return svc.status()
       if (method === "installBinds" && typeof svc.installBinds === "function") return svc.installBinds(arg)
+      if (method === "removeBinds" && typeof svc.removeBinds === "function") return svc.removeBinds(arg)
     }
     if (adapter.callIpc(root.shell, method, arg))
       return "ok"
@@ -169,6 +175,7 @@ Item {
   function allowRule(arg) { return String(root.callService("allowRule", arg || "")) }
   function enableRule(arg) { return String(root.callService("enableRule", arg || "")) }
   function installBinds(arg) { return String(root.callService("installBinds", arg || "")) }
+  function removeBinds(arg) { return String(root.callService("removeBinds", arg || "")) }
 
   function doRedact() {
     if (root.mode !== "alarm")
@@ -244,6 +251,11 @@ Item {
       root.muted = !!snap.muted
       root.allowCount = snap.allowCount || 0
       root.statusLine = snap.degraded ? "degraded" : (snap.watching ? "watching" : "starting")
+      root.bindNeeded = !!snap.bindNeeded
+      root.bindCanSet = !!snap.bindCanSet
+      root.bindNote = snap.bindNote || ""
+      root.bindCurrent = snap.bindCurrent || ""
+      root.bindKeys = snap.bindKeys || ""
       if (root.mode !== "alarm")
         return
       if (snap.lastResult && snap.lastResult.label)
@@ -505,6 +517,88 @@ Item {
           wrapMode: Text.WordWrap
           font.family: root.fontFamily
           font.pixelSize: Style.font.body
+        }
+
+        Text {
+          width: parent.width
+          visible: root.mode === "settings"
+          text: root.bindNeeded
+                ? (root.bindNote.length ? root.bindNote : "No hotkey. Set one from the bar or here — occupied combos are skipped.")
+                : ("Hotkey: " + (root.bindCurrent || "set"))
+          color: root.foreground
+          opacity: 0.7
+          wrapMode: Text.WordWrap
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.body
+        }
+
+        Row {
+          visible: root.mode === "settings"
+          spacing: Style.space(8)
+
+          Rectangle {
+            visible: root.bindNeeded && root.bindCanSet
+            width: setHotkeyLbl.implicitWidth + Style.space(20)
+            height: Style.space(32)
+            radius: Style.spacing.labelGap
+            color: root.accent
+            Text {
+              id: setHotkeyLbl
+              anchors.centerIn: parent
+              text: "Set hotkey"
+              color: "#111"
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.body
+              font.bold: true
+            }
+            MouseArea {
+              anchors.fill: parent
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.callService("installBinds", "")
+            }
+          }
+
+          Rectangle {
+            visible: !root.bindNeeded
+            width: changeHotkeyLbl.implicitWidth + Style.space(20)
+            height: Style.space(32)
+            radius: Style.spacing.labelGap
+            color: Style.normalFillFor(root.foreground, root.accent)
+            Text {
+              id: changeHotkeyLbl
+              anchors.centerIn: parent
+              text: "Change hotkey"
+              color: root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.body
+            }
+            MouseArea {
+              anchors.fill: parent
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.callService("installBinds", "change")
+            }
+          }
+
+          Rectangle {
+            visible: !root.bindNeeded
+            width: removeHotkeyLbl.implicitWidth + Style.space(20)
+            height: Style.space(32)
+            radius: Style.spacing.labelGap
+            color: Style.normalFillFor(root.foreground, root.accent)
+            Text {
+              id: removeHotkeyLbl
+              anchors.centerIn: parent
+              text: "Remove hotkey"
+              color: root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.body
+            }
+            MouseArea {
+              anchors.fill: parent
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.callService("removeBinds", "")
+            }
+          }
         }
 
         Rectangle {

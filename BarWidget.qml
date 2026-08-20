@@ -21,6 +21,11 @@ BarWidget {
   property var repos: []
   property int allowCount: 0
   property string note: ""
+  property bool bindNeeded: true
+  property bool bindCanSet: false
+  property string bindNote: ""
+  property string bindCurrent: ""
+  property string bindKeys: ""
 
   Adapter { id: adapter }
 
@@ -50,6 +55,11 @@ BarWidget {
     root.allowCount = snap.allowCount
     root.note = snap.lastStatusNote || ""
     root.lastTitle = snap.lastIncident ? (snap.lastIncident.title || "") : ""
+    root.bindNeeded = !!snap.bindNeeded
+    root.bindCanSet = !!snap.bindCanSet
+    root.bindNote = snap.bindNote || ""
+    root.bindCurrent = snap.bindCurrent || ""
+    root.bindKeys = snap.bindKeys || ""
     State.setSound(root.sound)
     State.setHideUntilEvent(root.hideUntilEvent)
   }
@@ -66,6 +76,8 @@ BarWidget {
       if (method === "setSound" && typeof svc.setSound === "function") return svc.setSound(arg)
       if (method === "dismiss" && typeof svc.dismiss === "function") return svc.dismiss()
       if (method === "settings" && typeof svc.settings === "function") return svc.settings()
+      if (method === "installBinds" && typeof svc.installBinds === "function") return svc.installBinds(arg)
+      if (method === "removeBinds" && typeof svc.removeBinds === "function") return svc.removeBinds(arg)
     }
     adapter.callIpc(bar && bar.shell, method, arg)
   }
@@ -79,9 +91,9 @@ BarWidget {
   function close() {}
   function toggle() { root.open() }
 
-  visible: !root.hideUntilEvent || root.hadEvent || root.level === "red" || root.degraded
-  implicitWidth: visible ? button.implicitWidth : 0
-  implicitHeight: button.implicitHeight
+  visible: !root.hideUntilEvent || root.hadEvent || root.level === "red" || root.degraded || root.bindNeeded
+  implicitWidth: visible ? row.implicitWidth : 0
+  implicitHeight: row.implicitHeight
 
   Timer {
     interval: 250
@@ -90,21 +102,27 @@ BarWidget {
     onTriggered: root.refresh()
   }
 
+  Row {
+    id: row
+    spacing: Style.space(4)
+
   WidgetButton {
     id: button
-    anchors.fill: parent
     bar: root.bar
     text: ""
     tooltipText: {
+      var hotkey = root.bindNeeded
+                   ? (root.bindCanSet ? "no hotkey — click Set hotkey" : (root.bindNote || "no hotkey"))
+                   : (root.bindCurrent || "hotkey set")
       if (root.level === "red")
-        return root.lastTitle || "Secret Canary — alarm"
+        return (root.lastTitle || "Secret Canary — alarm") + " · " + hotkey
       if (root.degraded)
-        return "Secret Canary — degraded, not fully watching"
+        return "Secret Canary — degraded, not fully watching · " + hotkey
       if (root.muted)
-        return "Secret Canary — muted"
+        return "Secret Canary — muted · " + hotkey
       if (root.level === "amber")
-        return root.lastTitle || "Secret Canary — warning"
-      return "Secret Canary — watching"
+        return (root.lastTitle || "Secret Canary — warning") + " · " + hotkey
+      return "Secret Canary — watching · " + hotkey
     }
     onPressed: function(buttonCode) {
       if (buttonCode === Qt.LeftButton)
@@ -139,6 +157,32 @@ BarWidget {
       Connections {
         target: root
         function onBirdChanged() { birdCanvas.requestPaint() }
+      }
+    }
+  }
+
+    WidgetButton {
+      id: hotkeyButton
+      visible: root.bindNeeded || root.bindCurrent.length > 0
+      bar: root.bar
+      text: root.bindNeeded ? "Set hotkey" : (root.bindKeys || "hotkey")
+      tooltipText: {
+        if (root.bindNeeded && root.bindCanSet)
+          return root.bindNote.length ? root.bindNote : "Set Super+Alt+X redact / Super+Alt+Shift+C summon. Occupied combos are skipped. Never unbinds someone else's key."
+        if (root.bindNeeded)
+          return root.bindNote.length ? root.bindNote : "No free combo to assign"
+        return (root.bindCurrent || "hotkey set") + " — left: change · right: remove"
+      }
+      onPressed: function(buttonCode) {
+        if (root.bindNeeded) {
+          if (buttonCode === Qt.LeftButton && root.bindCanSet)
+            root.callSvc("installBinds", "")
+          return
+        }
+        if (buttonCode === Qt.LeftButton)
+          root.callSvc("installBinds", "change")
+        else if (buttonCode === Qt.RightButton)
+          root.callSvc("removeBinds", "")
       }
     }
   }

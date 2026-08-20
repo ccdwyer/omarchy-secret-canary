@@ -45,6 +45,9 @@ Item {
   property bool overlayWanted: false
   property bool bindOfferNeeded: true
   property string bindOfferNote: ""
+  property string bindCurrent: ""
+  property string bindKeys: ""
+  property bool bindCanSet: false
   property var workQueue: []
   property var workCurrent: null
 
@@ -270,7 +273,10 @@ Item {
       muted: root.muted,
       sound: root.sound,
       bindOfferNeeded: root.bindOfferNeeded,
-      bindOfferNote: root.bindOfferNote
+      bindOfferNote: root.bindOfferNote,
+      bindCurrent: root.bindCurrent,
+      bindKeys: root.bindKeys,
+      bindCanSet: root.bindCanSet
     })
   }
   function open() { return root.summonOverlay(root.lastIncident ? JSON.stringify(root.lastIncident) : "{}") }
@@ -287,7 +293,11 @@ Item {
     var p = plan || Binds.offer
     root.bindOfferNeeded = !!p.needed
     root.bindOfferNote = String(p.note || "")
+    root.bindCurrent = String(p.current || "")
+    root.bindKeys = String(p.keys || "")
+    root.bindCanSet = !!(p.toAdd && p.toAdd.length)
     Binds.setOffer(p)
+    State.setBinds(p)
     root.publish()
   }
 
@@ -310,10 +320,7 @@ Item {
     enqueueWork(["hyprctl", "-j", "binds"], function(text, code) {
       if (Number(code) !== 0)
         return
-      var plan = Binds.applyScan(text)
-      root.applyBindPlan(plan)
-      if (plan.needed && plan.toAdd && plan.toAdd.length && Binds.claimAuto())
-        root.installBinds("auto")
+      root.applyBindPlan(Binds.applyScan(text))
     })
   }
 
@@ -325,27 +332,46 @@ Item {
   }
 
   function installBinds(arg) {
+    var mode = String(arg || "").trim()
+    if (mode === "remove")
+      return root.removeBinds()
+    var replace = mode === "change"
     enqueueWork(["hyprctl", "-j", "binds"], function(text, code) {
       if (Number(code) !== 0) {
         root.bindOfferNote = "could not read keybinds"
+        State.setBinds({ needed: root.bindOfferNeeded, note: root.bindOfferNote, current: root.bindCurrent, toAdd: [] })
         root.publish()
         return
       }
-      var plan = Binds.applyScan(text)
+      var plan = Binds.applyScan(text, replace ? { replace: true } : {})
       if (!plan.toAdd || !plan.toAdd.length) {
         root.applyBindPlan(plan)
         return
       }
       var lua = Binds.luaBlock(plan.toAdd)
-      enqueueWork(["python3", root.pluginDir + "/compat/install-binds.py", root.pluginId, lua], function(out, instCode) {
+      enqueueWork(Binds.installArgv(root.pluginDir, root.pluginId, lua), function(out, instCode) {
         if (Number(instCode) !== 0) {
           root.bindOfferNote = "could not write ~/.config/hypr/bindings.lua"
+          State.setBinds({ needed: root.bindOfferNeeded, note: root.bindOfferNote, current: root.bindCurrent, toAdd: plan.toAdd })
           root.publish()
           return
         }
         root.notifyNewBinds(plan)
         Qt.callLater(root.scanBinds)
       })
+    })
+    return "ok"
+  }
+
+  function removeBinds() {
+    enqueueWork(Binds.removeArgv(root.pluginDir, root.pluginId), function(out, code) {
+      if (Number(code) !== 0) {
+        root.bindOfferNote = "could not update ~/.config/hypr/bindings.lua"
+        State.setBinds({ needed: root.bindOfferNeeded, note: root.bindOfferNote, current: root.bindCurrent, toAdd: [] })
+        root.publish()
+        return
+      }
+      Qt.callLater(root.scanBinds)
     })
     return "ok"
   }
@@ -430,6 +456,7 @@ Item {
     function settings(arg: string): string { return root.settings() }
     function setSound(v: string): string { return root.setSound(v === "true") }
     function installBinds(arg: string): string { return root.installBinds(arg) }
+    function removeBinds(arg: string): string { return root.removeBinds() }
   }
 
   Process {

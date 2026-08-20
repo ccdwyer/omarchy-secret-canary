@@ -97,13 +97,16 @@ The alarm is a real overlay with exclusive keyboard focus.
 | Esc | Dismiss (30 s auto-dismiss) |
 
 Super+Ctrl+X is Omarchy dictation and Super+Ctrl+C is the capture menu, so
-Canary prefers Super+Alt+X (redact) and Super+Alt+Shift+C (summon). On first
-load the plugin writes those binds to `~/.config/hypr/bindings.lua` if the
-combos are free, then pops an Omarchy notification with the keys it assigned.
-Occupied shortcuts are skipped; Super+Alt+X falls back to Super+Shift+Alt+X,
-and summon falls back to Super+Alt+C only if that combo is free (Chroma may
-already own it). It never unbinds someone else's key, and it will not notify
-again once its binds are already live.
+Canary prefers Super+Alt+X (redact) and Super+Alt+Shift+C (summon). Hotkeys
+are **opt-in from the bar**: if none is installed, the chip shows **Set
+hotkey**. That writes a marked `o.bind` block to
+`~/.config/hypr/bindings.lua` (Hyprland reloads on save). Occupied shortcuts
+are skipped; Super+Alt+X falls back to Super+Shift+Alt+X, and summon falls
+back to Super+Alt+C only if that combo is free (Chroma may already own it).
+The plugin never auto-assigns on first load and never `hl.unbind`s someone
+else's key. When a hotkey is set, the bar and settings show it; **Change
+hotkey** rewrites this plugin's block, **Remove hotkey** deletes only that
+block.
 
 ```
 bind = SUPER ALT, X, exec, omarchy-shell io.github.chris.secret-canary redact ''
@@ -112,9 +115,11 @@ bind = SUPER ALT SHIFT, C, exec, omarchy-shell shell summon io.github.chris.secr
 
 ```sh
 omarchy-shell io.github.chris.secret-canary installBinds ''
+omarchy-shell io.github.chris.secret-canary installBinds change
+omarchy-shell io.github.chris.secret-canary removeBinds ''
 ```
 
-Left-click the chip for settings (Test the canary, mute, watched repos).
+Left-click the chip for settings (Test the canary, mute, watched repos, hotkey).
 Right-click tests immediately. A red chip opens the alarm overlay.
 
 ## Tiers
@@ -155,7 +160,7 @@ tokens (Shannon > 4.2 over 24+ chars) sitting near
   watching.
 - **Sound is off.** The visual flood is the alarm. Chime is an opt-in on the
   chip (and the `sound` bar-widget setting).
-- **Keybinds auto-assign on first load.** Overlay keys work while the alarm is up. Occupied combos are skipped. Never `hl.unbind`.
+- **Keybinds are opt-in from the bar.** Overlay keys work while the alarm is up. Occupied combos are skipped. Never `hl.unbind`. No first-load auto-assign.
 
 ## Threat model (the watcher)
 
@@ -222,3 +227,17 @@ cargo test --manifest-path src/canaryd/Cargo.toml
 ```sh
 omarchy plugin remove io.github.chris.secret-canary
 ```
+
+If you used **Set hotkey**, also delete this plugin's marked block from
+`~/.config/hypr/bindings.lua` (Hyprland reloads on save):
+
+```lua
+-- BEGIN io.github.chris.secret-canary
+o.bind("SUPER + ALT + X", "Secret Canary redact", "omarchy-shell io.github.chris.secret-canary redact ''")
+o.bind("SUPER + ALT + SHIFT + C", "Secret Canary", "omarchy-shell shell summon io.github.chris.secret-canary '{}'")
+-- END io.github.chris.secret-canary
+```
+
+Or click **Remove hotkey** on the bar / in settings before uninstalling.
+That script only strips this plugin's `BEGIN`/`END` block — it never
+`hl.unbind`s someone else's shortcut.

@@ -166,12 +166,13 @@ documented types (`Process`, `SplitParser`, `FileView`, `IpcHandler`,
 - OCR "scan focused window" stretch.
 - A second Quickshell process.
 - Network, accounts, telemetry.
-- Writing Hyprland config: on first load the service assigns free combos
-  (never Super+Ctrl+X dictation or Super+Ctrl+C capture) into a marked
-  `o.bind` block in `~/.config/hypr/bindings.lua`, then
-  `omarchy notification send`s the assigned keys. Occupied combos are
-  skipped or replaced with Super+Shift+Alt / Super+Alt variants. Never
-  `hl.unbind`. No notify once binds are already live.
+- Writing Hyprland config: opt-in only. The bar (and settings) show bind
+  status and **Set hotkey** when none is installed. An explicit click
+  writes a marked `o.bind` block in `~/.config/hypr/bindings.lua` (never
+  Super+Ctrl+X dictation or Super+Ctrl+C capture). Occupied combos are
+  skipped or replaced with Super+Shift+Alt / Super+Alt variants. Change
+  rewrites this plugin's block; Remove strips only the marked
+  `BEGIN`/`END` pair. Never `hl.unbind`. No first-load auto-assign.
 
 ## Example secrets are synthetic
 

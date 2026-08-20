@@ -22,6 +22,11 @@ var lastStatusNote = ""
 var lastResult = null
 var barLevel = "green"
 var overlayOpen = false
+var bindNeeded = true
+var bindNote = ""
+var bindCurrent = ""
+var bindKeys = ""
+var bindCanSet = false
 
 function snapshot() {
     return {
@@ -44,7 +49,12 @@ function snapshot() {
         lastStatusNote: lastStatusNote,
         lastResult: lastResult,
         barLevel: barLevel,
-        overlayOpen: overlayOpen
+        overlayOpen: overlayOpen,
+        bindNeeded: bindNeeded,
+        bindNote: bindNote,
+        bindCurrent: bindCurrent,
+        bindKeys: bindKeys,
+        bindCanSet: bindCanSet
     }
 }
 
@@ -148,6 +158,16 @@ function setHideUntilEvent(v) {
 
 function setOverlayOpen(v) {
     overlayOpen = !!v
+    bump()
+}
+
+function setBinds(info) {
+    info = info || {}
+    bindNeeded = !!info.needed
+    bindNote = String(info.note || "")
+    bindCurrent = String(info.current || "")
+    bindKeys = String(info.keys || "")
+    bindCanSet = !!(info.toAdd && info.toAdd.length)
     bump()
 }
 

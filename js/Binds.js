@@ -4,6 +4,8 @@
 // Lua binds show up as dispatcher "__lua" with a description, not the
 // omarchy-shell command in `arg`, so "ours" is plugin-id in arg OR our
 // descriptions.
+// Writes happen only on an explicit Set/Change/Remove click. Never
+// hl.unbind — install-binds.py edits only this plugin's marked block.
 
 var PLUGIN_ID = "io.github.chris.secret-canary"
 var SUPER = 64
@@ -37,18 +39,11 @@ var CANDIDATES = [
 var offer = {
     needed: true,
     note: "",
-    installed: 0,
+    current: "",
+    already: 0,
     toAdd: [],
-    skipped: []
-}
-
-var autoClaimed = false
-
-function claimAuto() {
-    if (autoClaimed)
-        return false
-    autoClaimed = true
-    return true
+    skipped: [],
+    ours: []
 }
 
 function setOffer(next) {
@@ -82,6 +77,23 @@ function keysMatch(a, b) {
     return isPeriod(x) && isPeriod(y)
 }
 
+function keysFromBind(bind) {
+    var m = Number(bind && bind.modmask) || 0
+    var parts = []
+    if (m & SUPER)
+        parts.push("SUPER")
+    if (m & SHIFT)
+        parts.push("SHIFT")
+    if (m & CTRL)
+        parts.push("CTRL")
+    if (m & ALT)
+        parts.push("ALT")
+    var key = keyOf(bind)
+    if (key)
+        parts.push(key)
+    return parts.join(" + ")
+}
+
 function isOurs(bind) {
     if (!bind)
         return false
@@ -96,14 +108,35 @@ function isOurs(bind) {
     return false
 }
 
-function oursCount(binds) {
-    var n = 0
+function oursEntries(binds) {
+    var out = []
+    var seen = {}
     var list = binds || []
     for (var i = 0; i < list.length; i++) {
-        if (isOurs(list[i]))
-            n++
+        if (!isOurs(list[i]))
+            continue
+        var keys = keysFromBind(list[i])
+        var desc = String(list[i].description || "")
+        var id = keys + "\0" + desc
+        if (seen[id])
+            continue
+        seen[id] = true
+        out.push({ keys: keys, desc: desc })
     }
-    return n
+    return out
+}
+
+function oursCount(binds) {
+    return oursEntries(binds).length
+}
+
+function currentLabel(entries) {
+    var list = entries || []
+    if (!list.length)
+        return ""
+    return list.map(function(e) {
+        return e.desc ? (e.keys + " — " + e.desc) : e.keys
+    }).join(" · ")
 }
 
 function comboOwner(binds, modmask, key) {
@@ -127,11 +160,12 @@ function pickCombo(binds, candidate) {
     if (!owner)
         return { keys: candidate.keys, modmask: candidate.modmask, key: candidate.key, desc: candidate.desc, cmd: candidate.cmd, chosen: candidate.keys }
     if (owner.ours)
-        return { already: true, keys: candidate.keys, desc: candidate.desc }
+        return { already: true, keys: candidate.keys, chosen: candidate.keys, desc: candidate.desc, cmd: candidate.cmd }
     var alts = candidate.alternates || []
     for (var i = 0; i < alts.length; i++) {
         var a = alts[i]
-        if (!comboOwner(binds, a.modmask, a.key))
+        var altOwner = comboOwner(binds, a.modmask, a.key)
+        if (!altOwner)
             return {
                 keys: a.keys,
                 modmask: a.modmask,
@@ -142,41 +176,76 @@ function pickCombo(binds, candidate) {
                 preferred: candidate.keys,
                 conflict: owner.desc
             }
+        if (altOwner.ours)
+            return {
+                already: true,
+                keys: a.keys,
+                chosen: a.keys,
+                desc: candidate.desc,
+                cmd: candidate.cmd,
+                preferred: candidate.keys,
+                conflict: owner.desc
+            }
     }
     return { skipped: true, keys: candidate.keys, desc: candidate.desc, conflict: owner.desc }
 }
 
-function plan(binds) {
+function writeItem(pick, candidate) {
+    return {
+        keys: pick.chosen || pick.keys || candidate.keys,
+        chosen: pick.chosen || pick.keys || candidate.keys,
+        desc: pick.desc || candidate.desc,
+        cmd: pick.cmd || candidate.cmd
+    }
+}
+
+function plan(binds, opts) {
+    opts = opts || {}
+    var replace = !!opts.replace
     var toAdd = []
     var skipped = []
     var already = 0
     for (var i = 0; i < CANDIDATES.length; i++) {
-        var pick = pickCombo(binds, CANDIDATES[i])
-        if (pick.already)
+        var candidate = CANDIDATES[i]
+        var pick = pickCombo(binds, candidate)
+        if (pick.already) {
             already++
-        else if (pick.skipped)
+            if (replace)
+                toAdd.push(writeItem(pick, candidate))
+        } else if (pick.skipped)
             skipped.push(pick)
         else
             toAdd.push(pick)
     }
-    var liveOurs = oursCount(binds)
-    if (liveOurs > 0)
-        already = Math.max(already, liveOurs)
-    var needed = already === 0
-    if (!needed)
+    var ours = oursEntries(binds)
+    if (ours.length > 0)
+        already = Math.max(already, ours.length)
+    var needed = ours.length === 0
+    if (!needed && !replace)
         toAdd = []
+    var current = currentLabel(ours)
+    var keys = ours.map(function(e) { return e.keys }).join(" · ")
     var note = ""
     if (!needed)
-        note = ""
+        note = current
     else if (!toAdd.length && skipped.length)
         note = skipped.map(function(s) { return s.keys + " is " + (s.conflict || "taken") }).join("; ")
     else if (toAdd.length) {
         var bits = toAdd.map(function(p) { return p.chosen || p.keys })
-        note = "Add " + bits.join(", ")
+        note = "Set " + bits.join(", ")
         for (var s = 0; s < skipped.length; s++)
             note += " — skipped " + skipped[s].keys + " (" + skipped[s].conflict + ")"
     }
-    return { needed: needed, already: already, toAdd: toAdd, skipped: skipped, note: note }
+    return {
+        needed: needed,
+        already: already,
+        toAdd: toAdd,
+        skipped: skipped,
+        note: note,
+        current: current,
+        keys: keys,
+        ours: ours
+    }
 }
 
 function luaLine(item) {
@@ -194,10 +263,18 @@ function luaBlock(items) {
     return lines.join("\n")
 }
 
-function applyScan(raw) {
-    var p = plan(parseBinds(raw))
+function applyScan(raw, opts) {
+    var p = plan(parseBinds(raw), opts)
     setOffer(p)
     return p
+}
+
+function installArgv(pluginDir, pluginId, lua) {
+    return ["python3", String(pluginDir || "") + "/compat/install-binds.py", String(pluginId || PLUGIN_ID), String(lua || "")]
+}
+
+function removeArgv(pluginDir, pluginId) {
+    return ["python3", String(pluginDir || "") + "/compat/install-binds.py", "--remove", String(pluginId || PLUGIN_ID)]
 }
 
 function notifyBody(items, skipped) {
