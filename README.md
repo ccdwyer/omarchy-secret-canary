@@ -97,13 +97,13 @@ The alarm is a real overlay with exclusive keyboard focus.
 | Esc | Dismiss (30 s auto-dismiss) |
 
 Super+Ctrl+X is Omarchy dictation and Super+Ctrl+C is the capture menu, so
-Canary prefers Super+Alt+X (redact) and Super+Alt+Shift+C (summon). If none
-of those keys are bound yet, the settings overlay and a **keys** chip on the
-bar offer **Add keybindings**. That writes `o.bind` lines to
-`~/.config/hypr/bindings.lua` (Hyprland reloads on save). Combos you already
-use are skipped; Super+Alt+X falls back to Super+Shift+Alt+X, and summon
-falls back to Super+Alt+C only if that combo is free (Chroma may already
-own it). The plugin never unbinds someone else's shortcut.
+Canary prefers Super+Alt+X (redact) and Super+Alt+Shift+C (summon). On first
+load the plugin writes those binds to `~/.config/hypr/bindings.lua` if the
+combos are free, then pops an Omarchy notification with the keys it assigned.
+Occupied shortcuts are skipped; Super+Alt+X falls back to Super+Shift+Alt+X,
+and summon falls back to Super+Alt+C only if that combo is free (Chroma may
+already own it). It never unbinds someone else's key, and it will not notify
+again once its binds are already live.
 
 ```
 bind = SUPER ALT, X, exec, omarchy-shell io.github.chris.secret-canary redact ''
@@ -155,7 +155,7 @@ tokens (Shannon > 4.2 over 24+ chars) sitting near
   watching.
 - **Sound is off.** The visual flood is the alarm. Chime is an opt-in on the
   chip (and the `sound` bar-widget setting).
-- **Keybinds are yours to add.** Overlay keys work while the alarm is up.
+- **Keybinds auto-assign on first load.** Overlay keys work while the alarm is up. Occupied combos are skipped. Never `hl.unbind`.
 
 ## Threat model (the watcher)
 

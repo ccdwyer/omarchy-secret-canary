@@ -405,5 +405,31 @@ test("binds: already-ours via lua description hides the offer", () => {
   assert.strictEqual(p.toAdd.length, 0)
 })
 
+test("binds: notify body lists assigned keys", () => {
+  const body = Binds.notifyBody([{ chosen: "SUPER + ALT + X", desc: "Secret Canary redact" }], [])
+  assert.ok(body.indexOf("SUPER + ALT + X — Secret Canary redact") === 0)
+  const argv = Binds.notifyArgv("Secret Canary", "Secret Canary keybindings", body)
+  assert.strictEqual(argv[0], "omarchy")
+  assert.strictEqual(argv[1], "notification")
+  assert.strictEqual(argv[2], "send")
+  assert.strictEqual(argv[4], "Secret Canary")
+  assert.strictEqual(argv[7], "Secret Canary keybindings")
+})
+
+test("binds: claimAuto is one-shot", () => {
+  assert.strictEqual(Binds.claimAuto(), true)
+  assert.strictEqual(Binds.claimAuto(), false)
+})
+
+test("qml: no Add keybindings button or keys chip", () => {
+  for (const rel of ["Overlay.qml", "BarWidget.qml", "Service.qml"]) {
+    const src = fs.readFileSync(path.join(ROOT, rel), "utf8")
+    assert.ok(src.indexOf("Add keybindings") < 0, rel)
+    assert.ok(src.indexOf('text: "keys"') < 0, rel)
+  }
+  const service = fs.readFileSync(path.join(ROOT, "Service.qml"), "utf8")
+  assert.ok(service.indexOf("Binds.claimAuto()") >= 0)
+})
+
 console.log(passed + " passed, " + failed + " failed")
 process.exit(failed ? 1 : 0)

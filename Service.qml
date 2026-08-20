@@ -310,8 +310,18 @@ Item {
     enqueueWork(["hyprctl", "-j", "binds"], function(text, code) {
       if (Number(code) !== 0)
         return
-      root.applyBindPlan(Binds.applyScan(text))
+      var plan = Binds.applyScan(text)
+      root.applyBindPlan(plan)
+      if (plan.needed && plan.toAdd && plan.toAdd.length && Binds.claimAuto())
+        root.installBinds("auto")
     })
+  }
+
+  function notifyNewBinds(plan) {
+    var body = Binds.notifyBody(plan.toAdd, plan.skipped)
+    if (!body)
+      return
+    Quickshell.execDetached(Binds.notifyArgv("Secret Canary", "Secret Canary keybindings", body))
   }
 
   function installBinds(arg) {
@@ -333,6 +343,7 @@ Item {
           root.publish()
           return
         }
+        root.notifyNewBinds(plan)
         Qt.callLater(root.scanBinds)
       })
     })

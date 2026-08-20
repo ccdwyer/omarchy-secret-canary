@@ -4,7 +4,6 @@ import Quickshell.Io
 import qs.Commons
 import qs.Ui
 import "js/State.js" as State
-import "js/Binds.js" as Binds
 
 BarWidget {
   id: root
@@ -22,8 +21,6 @@ BarWidget {
   property var repos: []
   property int allowCount: 0
   property string note: ""
-  property bool offerBinds: false
-  property string offerNote: ""
 
   Adapter { id: adapter }
 
@@ -55,9 +52,6 @@ BarWidget {
     root.lastTitle = snap.lastIncident ? (snap.lastIncident.title || "") : ""
     State.setSound(root.sound)
     State.setHideUntilEvent(root.hideUntilEvent)
-    var offer = Binds.offer || {}
-    root.offerBinds = !!offer.needed
-    root.offerNote = String(offer.note || "Add Super+Alt+X redact")
   }
 
   function callSvc(method, arg) {
@@ -72,7 +66,6 @@ BarWidget {
       if (method === "setSound" && typeof svc.setSound === "function") return svc.setSound(arg)
       if (method === "dismiss" && typeof svc.dismiss === "function") return svc.dismiss()
       if (method === "settings" && typeof svc.settings === "function") return svc.settings()
-      if (method === "installBinds" && typeof svc.installBinds === "function") return svc.installBinds(arg)
     }
     adapter.callIpc(bar && bar.shell, method, arg)
   }
@@ -86,9 +79,9 @@ BarWidget {
   function close() {}
   function toggle() { root.open() }
 
-  visible: !root.hideUntilEvent || root.hadEvent || root.level === "red" || root.degraded || root.offerBinds
-  implicitWidth: visible ? row.implicitWidth : 0
-  implicitHeight: row.implicitHeight
+  visible: !root.hideUntilEvent || root.hadEvent || root.level === "red" || root.degraded
+  implicitWidth: visible ? button.implicitWidth : 0
+  implicitHeight: button.implicitHeight
 
   Timer {
     interval: 250
@@ -97,12 +90,9 @@ BarWidget {
     onTriggered: root.refresh()
   }
 
-  Row {
-    id: row
-    spacing: Style.space(4)
-
   WidgetButton {
     id: button
+    anchors.fill: parent
     bar: root.bar
     text: ""
     tooltipText: {
@@ -149,18 +139,6 @@ BarWidget {
       Connections {
         target: root
         function onBirdChanged() { birdCanvas.requestPaint() }
-      }
-    }
-  }
-
-    WidgetButton {
-      visible: root.offerBinds
-      bar: root.bar
-      text: "keys"
-      tooltipText: root.offerNote.length ? root.offerNote : "Add Super+Alt+X / Super+Alt+Shift+C keybindings (skips combos you already use)"
-      onPressed: function(buttonCode) {
-        if (buttonCode === Qt.LeftButton)
-          root.callSvc("installBinds", "")
       }
     }
   }

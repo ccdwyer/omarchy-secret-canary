@@ -6,7 +6,6 @@ import qs.Commons
 import qs.Ui
 import "js/Protocol.js" as Protocol
 import "js/State.js" as State
-import "js/Binds.js" as Binds
 
 Item {
   id: root
@@ -38,8 +37,6 @@ Item {
   property int allowCount: 0
   property string statusLine: ""
   property string repoDraft: ""
-  property bool bindOfferNeeded: true
-  property string bindOfferNote: ""
 
   Adapter { id: adapter }
 
@@ -247,9 +244,6 @@ Item {
       root.muted = !!snap.muted
       root.allowCount = snap.allowCount || 0
       root.statusLine = snap.degraded ? "degraded" : (snap.watching ? "watching" : "starting")
-      var offer = Binds.offer || {}
-      root.bindOfferNeeded = !!offer.needed
-      root.bindOfferNote = String(offer.note || "")
       if (root.mode !== "alarm")
         return
       if (snap.lastResult && snap.lastResult.label)
@@ -531,40 +525,6 @@ Item {
             anchors.fill: parent
             cursorShape: Qt.PointingHandCursor
             onClicked: root.callService("testCanary", "")
-          }
-        }
-
-        Text {
-          width: parent.width
-          visible: root.mode === "settings" && root.bindOfferNeeded
-          text: root.bindOfferNote.length
-                ? root.bindOfferNote
-                : "Add Super+Alt+X redact · Super+Alt+Shift+C summon (skips combos you already use)"
-          color: root.foreground
-          opacity: 0.7
-          wrapMode: Text.WordWrap
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.body
-        }
-
-        Rectangle {
-          visible: root.mode === "settings" && root.bindOfferNeeded
-          width: bindLabel.implicitWidth + Style.space(16)
-          height: bindLabel.implicitHeight + Style.space(10)
-          radius: Style.spacing.labelGap
-          color: root.accent
-          Text {
-            id: bindLabel
-            anchors.centerIn: parent
-            text: "Add keybindings"
-            color: root.background
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.body
-          }
-          MouseArea {
-            anchors.fill: parent
-            cursorShape: Qt.PointingHandCursor
-            onClicked: root.callService("installBinds", "")
           }
         }
 
