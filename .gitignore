@@ -17,3 +17,5 @@
 .fix_prompt*.md
 .serena/
 tests/.tmp-fallback*
+__pycache__/
+*.pyc
